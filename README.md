@@ -21,8 +21,8 @@ COLMAP  feature_extractor  (SIFT, 强制 SIMPLE_PINHOLE 模型)
 3D Gaussian Splatting  train.py  (7000 步, Kaggle T4)
       |
       v
-后处理  render_custom.py  自写轨道相机轨迹，渲染新视角
-        trajectory.py     轨迹生成 (orbit / push / zoom)
+后处理  trajectory.py     轨迹生成 (orbit / push / zoom)
+        render_custom.py  按自定义轨迹渲染新视角
         eval_metrics.py   与真值帧比对 PSNR / SSIM / LPIPS
       |
       v
@@ -37,8 +37,8 @@ ffmpeg 合成环绕视频
 |---|---|
 | SfM 影像注册 | 40 / 40 全部注册成功 |
 | 训练步数 | 7000（Kaggle 免费 Tesla T4） |
-| 留出视角定性对比 | 见 `media/holdout_gt_vs_render.mp4` |
-| 轨道环绕渲染 | 见 `media/orbit_render.mp4` |
+| 留出视角定性对比 | `media/holdout_gt_vs_render.gif` |
+| 轨道环绕渲染 | `media/orbit_render.gif` |
 | 量化指标 (PSNR / SSIM / LPIPS) | **未记录** |
 
 **关于量化指标：** `eval_metrics.py` 已实现，但本次实验只保留了留出视角的
@@ -48,35 +48,47 @@ ffmpeg 合成环绕视频
 
 ### 稀疏重建
 
+三维点云与相机位姿：
+
+![三维点云](media/01_point_cloud_3d.png)
+
+对极几何校验（剔除误匹配）：
+
+![对极几何校验](media/02_epipolar_verification.png)
+
+重建统计：
+
+![重建统计](media/03_reconstruction_stats.png)
+
 COLMAP 特征匹配（SIFT + 顺序匹配）：
 
-![特征匹配](media/01_feature_matching.png)
+![特征匹配](media/04_feature_matching.png)
 
 稀疏重建输出的相机位姿与稀疏点云：
 
-![稀疏重建](media/02_sparse_reconstruction.png)
+![稀疏重建](media/05_sparse_reconstruction.png)
 
 ### 新视角合成
 
 留出视角（COLMAP `--eval` 划分、未参与训练）的真值照片与模型渲染对比：
 
-![留出视角对比](media/03_holdout_gt_vs_render_still.png)
+![留出视角对比](media/06_holdout_gt_vs_render_still.png)
 
 动态对比（真值 vs 渲染交替）：
 
-https://github.com/yimingjiang216-alt/sfm-3dgs-pipeline/raw/main/media/holdout_gt_vs_render.mp4
+![留出视角动态对比](media/holdout_gt_vs_render.gif)
 
 3DGS 模型渲染结果：
 
-![3DGS 渲染](media/04_3dgs_render.png)
+![3DGS 渲染](media/07_3dgs_render.png)
 
-轨道环绕渲染（自写相机轨迹 + ffmpeg 合成）：
+轨道环绕渲染（`trajectory.py` 生成轨迹 + `render_custom.py` + ffmpeg 合成）：
 
-https://github.com/yimingjiang216-alt/sfm-3dgs-pipeline/raw/main/media/orbit_render.mp4
+![轨道环绕](media/orbit_render.gif)
 
 模型旋转展示：
 
-![模型旋转](media/05_model_rotation.png)
+![模型旋转](media/08_model_rotation.png)
 
 ---
 
@@ -145,3 +157,15 @@ https://github.com/yimingjiang216-alt/sfm-3dgs-pipeline/raw/main/media/orbit_ren
   结果不能外推到大型室外场景。
 - 重建质量高度依赖 SfM 位姿准确度：位姿有偏差时，光度损失会把误差
   补偿进高斯位置，表现为发虚或雾状漂浮物。这一点在留出视角对比里可以看到。
+
+---
+
+## 八、几点说明
+
+- 上游约定：COLMAP 的 `mapper` 输出的 `cameras.bin` 中相机模型取决于
+  `feature_extractor` 时指定的模型，默认会为手机影像估计带畸变的模型，
+  而 3DGS 的 `readColmapCameras` 只处理针孔（SIMPLE_PINHOLE / PINHOLE），
+  两者不一致时报错信息并不指向根因，需要在 COLMAP 侧改。
+- 3DGS 论文里确实用了 16x16 的屏幕分块（tile）光栅化，但那是官方实现自带的
+  渲染机制，不是本仓库的工作；本仓库的场景是单场景桌面静物，
+  不涉及大规模分块重建。
