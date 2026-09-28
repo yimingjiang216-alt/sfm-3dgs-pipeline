@@ -1,7 +1,7 @@
 # Image -> COLMAP SfM -> 3D Gaussian Splatting
 
-用一组环绕拍摄的多视角照片（手机拍摄 130 余张，选用连续环绕的一圈共 40 张），
-走通「稀疏重建 -> 位姿求解 -> 3DGS 训练 -> 新视角合成」的完整链路。
+用一组环绕拍摄的多视角照片（手机拍摄 130 余张，上传其中 120 张），
+走通「稀疏重建 -> 位姿求解 -> 3DGS 训练 -> 新视角合成」的链路。
 
 COLMAP 和 3D Gaussian Splatting 都是上游开源项目，本仓库不包含它们的源码。
 本仓库做的是：把两者衔接起来跑通，并解决衔接过程中出现的环境和格式问题。
@@ -14,8 +14,8 @@ COLMAP 和 3D Gaussian Splatting 都是上游开源项目，本仓库不包含�
 多视角照片（环绕拍摄）
       |
       v
-COLMAP  feature_extractor  (SIFT nfeatures=2000, 强制 SIMPLE_PINHOLE 模型)
-        sequential_matcher (环绕拍摄有天然顺序)
+COLMAP  feature_extractor  (SIFT, 强制 SIMPLE_PINHOLE 模型)
+        sequential_matcher (环绕拍摄有天然顺序, 实测 423 对有效匹配)
         mapper             (增量式 SfM: 稀疏点云 + 相机位姿)
       |
       v
@@ -36,8 +36,8 @@ ffmpeg 合成环绕视频
 
 | 检查项 | 结果 |
 |---|---|
-| 输入影像 | 40 张（从 130 余张中选连续环绕的一圈） |
-| SfM 影像注册 | 40 / 40 全部注册成功 |
+| 输入影像 | 120 张（手机环绕拍摄，共 130 余张） |
+| SfM 相机注册 | 输出 10 个相机（日志共 38 次影像注册；匹配阶段 423 对有效匹配） |
 | 训练步数 | 7000（Kaggle 免费 Tesla T4） |
 | 留出视角定性对比 | `media/holdout_gt_vs_render.gif` |
 | 轨道环绕渲染 | `media/orbit_render.gif` |
@@ -152,6 +152,9 @@ COLMAP 特征匹配（SIFT + 顺序匹配）：
 
 - **没有量化指标。** 这是本项目最主要的缺口。`eval_metrics.py` 实现了，
   但数值没有被记录；要补的话需要重跑一次训练并在留出视角上算 PSNR / SSIM / LPIPS。
+- 相机注册率低：120 张输入最终只输出 10 个训练相机。日志显示匹配阶段只有 423 对
+  有效匹配，匹配对不足限制了增量重建的扩展范围，后段出现 “No good initial image pair
+  found” 后停止扩张。
 - 拍摄是环绕一圈，基线短、视角变化有限，重建质量受限于此；
   更好的做法是分层多角度拍摄（俯视 / 平视 / 仰视各一组）。
 - 3DGS 训练只到 7000 步，自适应密度化未充分收敛。
