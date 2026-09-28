@@ -1,6 +1,6 @@
 # Image -> COLMAP SfM -> 3D Gaussian Splatting
 
-用一组自己拍的多视角照片，走通「稀疏重建 -> 位姿求解 -> 3DGS 训练 -> 新视角合成」的完整链路。
+用一组多视角照片，走通「稀疏重建 -> 位姿求解 -> 3DGS 训练 -> 新视角合成」的完整链路。
 
 COLMAP 和 3D Gaussian Splatting 都是上游开源项目，本仓库不包含它们的源码。
 本仓库做的是：把两者衔接起来跑通，并解决衔接过程中出现的环境和格式问题。
@@ -10,15 +10,15 @@ COLMAP 和 3D Gaussian Splatting 都是上游开源项目，本仓库不包含�
 ## 一、链路
 
 ```
-手机环绕拍摄多视角照片
+多视角照片（环绕拍摄）
       |
       v
 COLMAP  feature_extractor  (SIFT, 强制 SIMPLE_PINHOLE 模型)
-        exhaustive_matcher (40 张，穷举匹配)
+        sequential_matcher (环绕拍摄有天然顺序)
         mapper             (增量式 SfM: 稀疏点云 + 相机位姿)
       |
       v
-3D Gaussian Splatting  train.py  (7000 步)
+3D Gaussian Splatting  train.py  (7000 步, Kaggle T4)
       |
       v
 后处理  render_custom.py  自写轨道相机轨迹，渲染新视角
@@ -29,11 +29,58 @@ COLMAP  feature_extractor  (SIFT, 强制 SIMPLE_PINHOLE 模型)
 ffmpeg 合成环绕视频
 ```
 
-数据规模：拍摄 130 余张，选用连续 40 张，全部影像注册成功。
+---
+
+## 二、结果
+
+| 检查项 | 结果 |
+|---|---|
+| SfM 影像注册 | 40 / 40 全部注册成功 |
+| 训练步数 | 7000（Kaggle 免费 Tesla T4） |
+| 留出视角定性对比 | 见 `media/holdout_gt_vs_render.mp4` |
+| 轨道环绕渲染 | 见 `media/orbit_render.mp4` |
+| 量化指标 (PSNR / SSIM / LPIPS) | **未记录** |
+
+**关于量化指标：** `eval_metrics.py` 已实现，但本次实验只保留了留出视角的
+定性对比与轨道视频，没有把 PSNR / SSIM / LPIPS 的数值记录下来。
+因此本仓库不对重建精度做任何数值结论——这一点如实说明，
+不拿定性结果冒充定量结果。
+
+### 稀疏重建
+
+COLMAP 特征匹配（SIFT + 顺序匹配）：
+
+![特征匹配](media/01_feature_matching.png)
+
+稀疏重建输出的相机位姿与稀疏点云：
+
+![稀疏重建](media/02_sparse_reconstruction.png)
+
+### 新视角合成
+
+留出视角（COLMAP `--eval` 划分、未参与训练）的真值照片与模型渲染对比：
+
+![留出视角对比](media/03_holdout_gt_vs_render_still.png)
+
+动态对比（真值 vs 渲染交替）：
+
+https://github.com/yimingjiang216-alt/sfm-3dgs-pipeline/raw/main/media/holdout_gt_vs_render.mp4
+
+3DGS 模型渲染结果：
+
+![3DGS 渲染](media/04_3dgs_render.png)
+
+轨道环绕渲染（自写相机轨迹 + ffmpeg 合成）：
+
+https://github.com/yimingjiang216-alt/sfm-3dgs-pipeline/raw/main/media/orbit_render.mp4
+
+模型旋转展示：
+
+![模型旋转](media/05_model_rotation.png)
 
 ---
 
-## 二、本仓库的文件
+## 三、本仓库的文件
 
 | 文件 | 作用 |
 |---|---|
@@ -47,7 +94,7 @@ ffmpeg 合成环绕视频
 
 ---
 
-## 三、环境与分工
+## 四、环境与分工
 
 | 环节 | 在哪跑 | 原因 |
 |---|---|---|
@@ -59,7 +106,7 @@ ffmpeg 合成环绕视频
 
 ---
 
-## 四、衔接过程中定位并解决的问题
+## 五、衔接过程中定位并解决的问题
 
 这一部分是本项目的主要实际工作。跑通这条链路的难点几乎全在两个工具的衔接处。
 
@@ -70,11 +117,13 @@ ffmpeg 合成环绕视频
 | CUDA 扩展编译失败 | 安装的 torch 版本与 Kaggle 系统 CUDA 不匹配 | 固定 `torch cu121` + `TORCH_CUDA_ARCH_LIST=7.5` |
 | 子模块扩展报缺 `libc10` 符号 | 编译顺序问题 | 先 `import torch` 再编译子模块 |
 | COLMAP 内存爆掉 | 原图分辨率过高 | 缩放到 1600 px + 限制线程数 |
-| 全量穷举匹配太慢 | 有序环绕拍摄用不上穷举 | 改 `sequential_matcher`（40 张规模下穷举亦可接受，两种都验证过） |
+| 全量穷举匹配太慢 | 有序环绕拍摄用不上穷举 | 改 `sequential_matcher` |
+
+照片进入流水线前统一缩放到长边 1600 px，避免分辨率差异影响 SIFT 尺度空间稳定性。
 
 ---
 
-## 五、复现
+## 六、复现
 
 ```
 1. 把 gaussian-splatting 克隆到工作目录（本仓库不含它）
@@ -85,9 +134,14 @@ ffmpeg 合成环绕视频
 
 ---
 
-## 六、已知不足
+## 七、已知不足
 
-- 拍摄是手机环绕一圈，基线短、视角变化有限，重建质量受限于此；
+- **没有量化指标。** 这是本项目最主要的缺口。`eval_metrics.py` 实现了，
+  但数值没有被记录；要补的话需要重跑一次训练并在留出视角上算 PSNR / SSIM / LPIPS。
+- 拍摄是环绕一圈，基线短、视角变化有限，重建质量受限于此；
   更好的做法是分层多角度拍摄（俯视 / 平视 / 仰视各一组）。
-- 3DGS 训练只到 7000 步，未做完整收敛验证。
-- 场景是桌面小物体，不涉及大规模场景或分块重建。
+- 3DGS 训练只到 7000 步，自适应密度化未充分收敛。
+- 场景是桌面小物体、纹理丰富，属于 3DGS 相对容易的工况，
+  结果不能外推到大型室外场景。
+- 重建质量高度依赖 SfM 位姿准确度：位姿有偏差时，光度损失会把误差
+  补偿进高斯位置，表现为发虚或雾状漂浮物。这一点在留出视角对比里可以看到。
