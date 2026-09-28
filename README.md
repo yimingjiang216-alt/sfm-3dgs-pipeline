@@ -1,6 +1,7 @@
 # Image -> COLMAP SfM -> 3D Gaussian Splatting
 
-用一组多视角照片，走通「稀疏重建 -> 位姿求解 -> 3DGS 训练 -> 新视角合成」的完整链路。
+用一组环绕拍摄的多视角照片（手机拍摄 130 余张，选用连续环绕的一圈共 40 张），
+走通「稀疏重建 -> 位姿求解 -> 3DGS 训练 -> 新视角合成」的完整链路。
 
 COLMAP 和 3D Gaussian Splatting 都是上游开源项目，本仓库不包含它们的源码。
 本仓库做的是：把两者衔接起来跑通，并解决衔接过程中出现的环境和格式问题。
@@ -13,7 +14,7 @@ COLMAP 和 3D Gaussian Splatting 都是上游开源项目，本仓库不包含�
 多视角照片（环绕拍摄）
       |
       v
-COLMAP  feature_extractor  (SIFT, 强制 SIMPLE_PINHOLE 模型)
+COLMAP  feature_extractor  (SIFT nfeatures=2000, 强制 SIMPLE_PINHOLE 模型)
         sequential_matcher (环绕拍摄有天然顺序)
         mapper             (增量式 SfM: 稀疏点云 + 相机位姿)
       |
@@ -35,6 +36,7 @@ ffmpeg 合成环绕视频
 
 | 检查项 | 结果 |
 |---|---|
+| 输入影像 | 40 张（从 130 余张中选连续环绕的一圈） |
 | SfM 影像注册 | 40 / 40 全部注册成功 |
 | 训练步数 | 7000（Kaggle 免费 Tesla T4） |
 | 留出视角定性对比 | `media/holdout_gt_vs_render.gif` |
