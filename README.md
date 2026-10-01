@@ -1,6 +1,6 @@
 # Image -> COLMAP SfM -> 3D Gaussian Splatting
 
-用一组环绕拍摄的多视角照片（手机拍摄 130 余张，本版取其中 40 张连续环绕照片），
+用一组环绕拍摄的多视角照片，
 走通「稀疏重建 -> 位姿求解 -> 3DGS 训练 -> 新视角合成」的链路。
 
 COLMAP 和 3D Gaussian Splatting 都是上游开源项目，本仓库不包含它们的源码。
