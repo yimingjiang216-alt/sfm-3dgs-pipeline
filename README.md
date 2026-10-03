@@ -119,13 +119,13 @@ COLMAP 特征匹配（SIFT + 顺序匹配）：
 | COLMAP SfM | Kaggle（CPU 模式） | 无本地 GPU 环境 |
 | 3DGS 训练 | Kaggle 免费 T4 | 训练需要 CUDA |
 
-所以「训练在 Kaggle、轨迹与评估在本地」是这个项目的实际分工，不是刻意拆分。
+「训练在 Kaggle、轨迹与评估在本地」即由此而来。
 
 ---
 
 ## 五、衔接过程中定位并解决的问题
 
-这一部分是本项目的主要实际工作。跑通这条链路的难点几乎全在两个工具的衔接处。
+跑通这条链路的难点集中在两个工具的衔接处。
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
@@ -177,3 +177,15 @@ COLMAP 特征匹配（SIFT + 顺序匹配）：
 - 3DGS 论文里确实用了 16x16 的屏幕分块（tile）光栅化，但那是官方实现自带的
   渲染机制，不是本仓库的工作；本仓库的场景是单场景桌面静物，
   不涉及大规模分块重建。
+
+---
+
+## 九、方法出处
+
+| 链路环节 | 出处 |
+|---|---|
+| 3D Gaussian Splatting | Kerbl et al., *3D Gaussian Splatting for Real-Time Radiance Field Rendering*, SIGGRAPH 2023 最佳论文, arXiv:2308.04079（上游 repo graphdeco-inria/gaussian-splatting） |
+| COLMAP 增量式 SfM | Schönberger & Frahm, *Structure-from-Motion Revisited*, CVPR 2016 |
+| SIFT 特征 | Lowe, *Distinctive Image Features from Scale-Invariant Keypoints*, IJCV 2004 |
+| PSNR / SSIM | 经典图像质量指标（PSNR 源自信息论, SSIM: Wang et al., 2004） |
+| LPIPS | Zhang et al., *The Unreasonable Effectiveness of Deep Features as a Perceptual Metric*, CVPR 2018 |
